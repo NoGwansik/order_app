@@ -131,6 +131,13 @@
   margin-bottom: 0.5rem;
 }
 
+.menu-out-of-stock {
+  font-size: 0.9rem;
+  color: #f44336;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
 .menu-options {
   display: flex;
   flex-direction: column;
@@ -173,6 +180,12 @@
 
 .add-to-cart-button:active {
   background-color: #1565C0;
+}
+
+.add-to-cart-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* 장바구니 섹션 */

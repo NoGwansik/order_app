@@ -1,5 +1,28 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import './App.css'
+
+// 상수 정의
+const OPTION_PRICES = {
+  SHOT: 500,
+  SYRUP: 0
+}
+
+const STOCK_THRESHOLDS = {
+  LOW_STOCK: 5,
+  OUT_OF_STOCK: 0
+}
+
+const ORDER_STATUS = {
+  PENDING: 'pending',
+  RECEIVED: 'received',
+  IN_PRODUCTION: 'in_production',
+  COMPLETED: 'completed'
+}
+
+const VIEWS = {
+  ORDER: 'order',
+  ADMIN: 'admin'
+}
 
 // 임시 메뉴 데이터
 const initialMenus = [
@@ -32,16 +55,42 @@ const initialMenus = [
   }
 ]
 
+// 유틸리티 함수들
+const formatPrice = (price) => {
+  return price.toLocaleString('ko-KR')
+}
+
+const getOptionText = (options) => {
+  const parts = []
+  if (options?.addShot) parts.push('샷 추가')
+  if (options?.addSyrup) parts.push('시럽 추가')
+  return parts.length > 0 ? ` (${parts.join(', ')})` : ''
+}
+
+const calculateOptionPrice = (options) => {
+  return (options.addShot ? OPTION_PRICES.SHOT : 0) + (options.addSyrup ? OPTION_PRICES.SYRUP : 0)
+}
+
+const getStockStatus = (stock) => {
+  if (stock === STOCK_THRESHOLDS.OUT_OF_STOCK) return { text: '품절', color: '#f44336' }
+  if (stock < STOCK_THRESHOLDS.LOW_STOCK) return { text: '주의', color: '#ff9800' }
+  return { text: '정상', color: '#4caf50' }
+}
+
+const formatOrderDate = (date) => {
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+}
+
 function App() {
-  const [currentView, setCurrentView] = useState('order') // 'order' or 'admin'
+  const [currentView, setCurrentView] = useState(VIEWS.ORDER)
   const [menus, setMenus] = useState(initialMenus)
   const [cart, setCart] = useState([])
   const [selectedOptions, setSelectedOptions] = useState({})
-  const [orders, setOrders] = useState([]) // 주문 목록
-  const [orderIdCounter, setOrderIdCounter] = useState(1) // 주문 ID 카운터
+  const [orders, setOrders] = useState([])
+  const [orderIdCounter, setOrderIdCounter] = useState(1)
 
   // 옵션 선택 핸들러
-  const handleOptionChange = (menuId, option, checked) => {
+  const handleOptionChange = useCallback((menuId, option, checked) => {
     setSelectedOptions(prev => ({
       ...prev,
       [menuId]: {
@@ -50,18 +99,22 @@ function App() {
         [option]: checked
       }
     }))
-  }
+  }, [])
 
   // 장바구니에 추가
-  const addToCart = (menu) => {
-    // 현재 선택된 옵션 가져오기 (없으면 기본값)
+  const addToCart = useCallback((menu) => {
+    // 재고 확인
+    if (menu.stock === 0) {
+      alert(`${menu.name}은(는) 품절되었습니다.`)
+      return
+    }
+
     const options = {
       addShot: selectedOptions[menu.id]?.addShot || false,
       addSyrup: selectedOptions[menu.id]?.addSyrup || false
     }
     
-    // 옵션에 따른 추가 가격 계산
-    const optionPrice = (options.addShot ? 500 : 0) + (options.addSyrup ? 0 : 0)
+    const optionPrice = calculateOptionPrice(options)
     const unitPrice = menu.price + optionPrice
 
     // 장바구니에서 동일한 메뉴와 옵션 조합 찾기
@@ -80,7 +133,7 @@ function App() {
 
     if (existingItemIndex >= 0) {
       // 동일한 메뉴와 옵션 조합이 이미 장바구니에 있음 → 수량만 증가
-      setCart(cart.map((item, idx) => {
+      setCart(prevCart => prevCart.map((item, idx) => {
         if (idx === existingItemIndex) {
           const newQuantity = item.quantity + 1
           return {
@@ -104,7 +157,7 @@ function App() {
         quantity: 1,
         totalPrice: unitPrice
       }
-      setCart([...cart, newItem])
+      setCart(prevCart => [...prevCart, newItem])
     }
 
     // 옵션 선택 초기화
@@ -112,24 +165,36 @@ function App() {
       ...prev,
       [menu.id]: { addShot: false, addSyrup: false }
     }))
-  }
+  }, [cart, selectedOptions])
 
-  // 총 금액 계산
-  const calculateTotal = () => {
+  // 총 금액 계산 (메모이제이션)
+  const totalAmount = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.totalPrice, 0)
-  }
+  }, [cart])
 
   // 주문하기
-  const handleOrder = () => {
-    if (cart.length === 0) return
+  const handleOrder = useCallback(() => {
+    if (cart.length === 0) {
+      alert('장바구니가 비어있습니다.')
+      return
+    }
+
+    // 재고 확인
+    const insufficientStock = cart.some(item => {
+      const menu = menus.find(m => m.id === item.menuId)
+      return menu && menu.stock < item.quantity
+    })
+
+    if (insufficientStock) {
+      alert('재고가 부족한 메뉴가 있습니다. 장바구니를 확인해주세요.')
+      return
+    }
 
     const now = new Date()
-    const orderDate = `${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-    
     const newOrder = {
       orderId: orderIdCounter,
-      orderDate: orderDate,
-      orderDateTime: now.toISOString(), // 정렬용
+      orderDate: formatOrderDate(now),
+      orderDateTime: now.toISOString(),
       items: cart.map(item => ({
         menuId: item.menuId,
         menuName: item.menuName,
@@ -137,98 +202,78 @@ function App() {
         price: item.totalPrice / item.quantity,
         options: item.options
       })),
-      totalAmount: calculateTotal(),
-      status: 'pending' // 'pending' | 'received' | 'in_production' | 'completed'
+      totalAmount: totalAmount,
+      status: ORDER_STATUS.PENDING
     }
 
-    setOrderIdCounter(orderIdCounter + 1)
-    setOrders([newOrder, ...orders])
-    alert(`주문이 완료되었습니다!\n총 금액: ${calculateTotal().toLocaleString()}원`)
+    setOrderIdCounter(prev => prev + 1)
+    setOrders(prev => [newOrder, ...prev])
+    alert(`주문이 완료되었습니다!\n총 금액: ${formatPrice(totalAmount)}원`)
     setCart([])
-  }
-
-  // 가격 포맷팅
-  const formatPrice = (price) => {
-    return price.toLocaleString('ko-KR')
-  }
-
-  // 옵션 텍스트 생성
-  const getOptionText = (options) => {
-    const parts = []
-    if (options?.addShot) parts.push('샷 추가')
-    if (options?.addSyrup) parts.push('시럽 추가')
-    return parts.length > 0 ? ` (${parts.join(', ')})` : ''
-  }
-
-  // 재고 상태 확인
-  const getStockStatus = (stock) => {
-    if (stock === 0) return { text: '품절', color: '#f44336' }
-    if (stock < 5) return { text: '주의', color: '#ff9800' }
-    return { text: '정상', color: '#4caf50' }
-  }
+  }, [cart, menus, orderIdCounter, totalAmount])
 
   // 재고 증가
-  const increaseStock = (menuId) => {
-    setMenus(menus.map(menu => 
+  const increaseStock = useCallback((menuId) => {
+    setMenus(prevMenus => prevMenus.map(menu => 
       menu.id === menuId ? { ...menu, stock: menu.stock + 1 } : menu
     ))
-  }
+  }, [])
 
   // 재고 감소
-  const decreaseStock = (menuId) => {
-    setMenus(menus.map(menu => 
+  const decreaseStock = useCallback((menuId) => {
+    setMenus(prevMenus => prevMenus.map(menu => 
       menu.id === menuId && menu.stock > 0 
         ? { ...menu, stock: menu.stock - 1 } 
         : menu
     ))
-  }
+  }, [])
 
   // 주문 상태 업데이트
-  const updateOrderStatus = (orderId, newStatus) => {
-    const order = orders.find(o => o.orderId === orderId)
-    if (!order) return
+  const updateOrderStatus = useCallback((orderId, newStatus) => {
+    setOrders(prevOrders => {
+      const order = prevOrders.find(o => o.orderId === orderId)
+      if (!order) return prevOrders
 
-    // 제조 완료 상태로 변경될 때 재고 감소
-    if (newStatus === 'completed' && order.status !== 'completed') {
-      setMenus(prevMenus => {
-        return prevMenus.map(menu => {
-          // 주문에 포함된 해당 메뉴 찾기
-          const orderItem = order.items.find(item => item.menuId === menu.id)
-          if (orderItem) {
-            const newStock = Math.max(0, menu.stock - orderItem.quantity)
-            return { ...menu, stock: newStock }
-          }
-          return menu
+      // 제조 완료 상태로 변경될 때 재고 감소
+      if (newStatus === ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.COMPLETED) {
+        setMenus(prevMenus => {
+          return prevMenus.map(menu => {
+            // 같은 메뉴가 여러 번 주문되었을 수 있으므로 모든 항목을 찾아 수량 합산
+            const orderItems = order.items.filter(item => item.menuId === menu.id)
+            if (orderItems.length > 0) {
+              const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0)
+              const newStock = Math.max(0, menu.stock - totalQuantity)
+              return { ...menu, stock: newStock }
+            }
+            return menu
+          })
         })
-      })
-    }
+      }
 
-    setOrders(orders.map(order => 
-      order.orderId === orderId ? { ...order, status: newStatus } : order
-    ))
-  }
+      return prevOrders.map(order => 
+        order.orderId === orderId ? { ...order, status: newStatus } : order
+      )
+    })
+  }, [])
 
-  // 대시보드 통계 계산
-  const getDashboardStats = () => {
+  // 대시보드 통계 계산 (메모이제이션)
+  const stats = useMemo(() => {
     return {
       totalOrders: orders.length,
-      receivedOrders: orders.filter(o => o.status === 'received').length,
-      inProductionOrders: orders.filter(o => o.status === 'in_production').length,
-      completedOrders: orders.filter(o => o.status === 'completed').length
+      receivedOrders: orders.filter(o => o.status === ORDER_STATUS.RECEIVED).length,
+      inProductionOrders: orders.filter(o => o.status === ORDER_STATUS.IN_PRODUCTION).length,
+      completedOrders: orders.filter(o => o.status === ORDER_STATUS.COMPLETED).length
     }
-  }
-
-  const stats = getDashboardStats()
+  }, [orders])
 
   // 주문하기 화면
   const OrderScreen = () => (
     <main className="main-content">
-      {/* 메뉴 아이템 영역 */}
       <section className="menu-section">
         <div className="menu-grid">
           {menus.map(menu => {
             const options = selectedOptions[menu.id] || { addShot: false, addSyrup: false }
-            const optionPrice = (options.addShot ? 500 : 0) + (options.addSyrup ? 0 : 0)
+            const optionPrice = calculateOptionPrice(options)
             const displayPrice = menu.price + optionPrice
 
             return (
@@ -240,29 +285,38 @@ function App() {
                   <h3 className="menu-name">{menu.name}</h3>
                   <p className="menu-price">{formatPrice(displayPrice)}원</p>
                   <p className="menu-description">{menu.description}</p>
+                  {menu.stock === 0 && (
+                    <p className="menu-out-of-stock">품절</p>
+                  )}
                   <div className="menu-options">
                     <label className="option-label">
                       <input
                         type="checkbox"
                         checked={options.addShot}
                         onChange={(e) => handleOptionChange(menu.id, 'addShot', e.target.checked)}
+                        disabled={menu.stock === 0}
+                        aria-label="샷 추가 옵션"
                       />
-                      <span>샷 추가 (+500원)</span>
+                      <span>샷 추가 (+{formatPrice(OPTION_PRICES.SHOT)}원)</span>
                     </label>
                     <label className="option-label">
                       <input
                         type="checkbox"
                         checked={options.addSyrup}
                         onChange={(e) => handleOptionChange(menu.id, 'addSyrup', e.target.checked)}
+                        disabled={menu.stock === 0}
+                        aria-label="시럽 추가 옵션"
                       />
-                      <span>시럽 추가 (+0원)</span>
+                      <span>시럽 추가 (+{formatPrice(OPTION_PRICES.SYRUP)}원)</span>
                     </label>
                   </div>
                   <button
                     className="add-to-cart-button"
                     onClick={() => addToCart(menu)}
+                    disabled={menu.stock === 0}
+                    aria-label={`${menu.name} 장바구니에 추가`}
                   >
-                    담기
+                    {menu.stock === 0 ? '품절' : '담기'}
                   </button>
                 </div>
               </div>
@@ -271,7 +325,6 @@ function App() {
         </div>
       </section>
 
-      {/* 장바구니 영역 */}
       <section className="cart-section">
         <h2 className="cart-title">장바구니</h2>
         {cart.length === 0 ? (
@@ -280,7 +333,7 @@ function App() {
           <>
             <div className="cart-items">
               {cart.map((item, index) => (
-                <div key={index} className="cart-item">
+                <div key={`${item.menuId}-${item.options.addShot}-${item.options.addSyrup}-${index}`} className="cart-item">
                   <span className="cart-item-name">
                     {item.menuName}{getOptionText(item.options)} x {item.quantity}
                   </span>
@@ -289,11 +342,12 @@ function App() {
               ))}
             </div>
             <div className="cart-total">
-              <span>총 금액 {formatPrice(calculateTotal())}원</span>
+              <span>총 금액 {formatPrice(totalAmount)}원</span>
             </div>
             <button
               className="order-button"
               onClick={handleOrder}
+              aria-label="주문하기"
             >
               주문하기
             </button>
@@ -306,7 +360,6 @@ function App() {
   // 관리자 화면
   const AdminScreen = () => (
     <main className="main-content admin-content">
-      {/* 관리자 대시보드 */}
       <section className="dashboard-section">
         <h2 className="section-title">관리자 대시보드</h2>
         <div className="dashboard-stats">
@@ -320,7 +373,6 @@ function App() {
         </div>
       </section>
 
-      {/* 재고 현황 */}
       <section className="inventory-section">
         <h2 className="section-title">재고 현황</h2>
         <div className="inventory-list">
@@ -342,12 +394,14 @@ function App() {
                     className="stock-button decrease"
                     onClick={() => decreaseStock(menu.id)}
                     disabled={menu.stock === 0}
+                    aria-label={`${menu.name} 재고 감소`}
                   >
                     -
                   </button>
                   <button 
                     className="stock-button increase"
                     onClick={() => increaseStock(menu.id)}
+                    aria-label={`${menu.name} 재고 증가`}
                   >
                     +
                   </button>
@@ -358,7 +412,6 @@ function App() {
         </div>
       </section>
 
-      {/* 주문 현황 */}
       <section className="orders-section">
         <h2 className="section-title">주문 현황</h2>
         {orders.length === 0 ? (
@@ -381,31 +434,34 @@ function App() {
                   </div>
                 </div>
                 <div className="order-actions">
-                  {order.status === 'pending' && (
+                  {order.status === ORDER_STATUS.PENDING && (
                     <button
                       className="order-action-button"
-                      onClick={() => updateOrderStatus(order.orderId, 'received')}
+                      onClick={() => updateOrderStatus(order.orderId, ORDER_STATUS.RECEIVED)}
+                      aria-label="주문 접수"
                     >
                       주문 접수
                     </button>
                   )}
-                  {order.status === 'received' && (
+                  {order.status === ORDER_STATUS.RECEIVED && (
                     <button
                       className="order-action-button"
-                      onClick={() => updateOrderStatus(order.orderId, 'in_production')}
+                      onClick={() => updateOrderStatus(order.orderId, ORDER_STATUS.IN_PRODUCTION)}
+                      aria-label="제조 시작"
                     >
                       제조 시작
                     </button>
                   )}
-                  {order.status === 'in_production' && (
+                  {order.status === ORDER_STATUS.IN_PRODUCTION && (
                     <button
                       className="order-action-button"
-                      onClick={() => updateOrderStatus(order.orderId, 'completed')}
+                      onClick={() => updateOrderStatus(order.orderId, ORDER_STATUS.COMPLETED)}
+                      aria-label="제조 완료"
                     >
                       제조 완료
                     </button>
                   )}
-                  {order.status === 'completed' && (
+                  {order.status === ORDER_STATUS.COMPLETED && (
                     <span className="order-completed">완료</span>
                   )}
                 </div>
@@ -419,20 +475,21 @@ function App() {
 
   return (
     <div className="App">
-      {/* 헤더 */}
       <header className="header">
         <div className="header-content">
           <h1 className="brand">COZY</h1>
           <nav className="nav-buttons">
             <button 
-              className={`nav-button ${currentView === 'order' ? 'active' : ''}`}
-              onClick={() => setCurrentView('order')}
+              className={`nav-button ${currentView === VIEWS.ORDER ? 'active' : ''}`}
+              onClick={() => setCurrentView(VIEWS.ORDER)}
+              aria-label="주문하기 화면으로 이동"
             >
               주문하기
             </button>
             <button 
-              className={`nav-button ${currentView === 'admin' ? 'active' : ''}`}
-              onClick={() => setCurrentView('admin')}
+              className={`nav-button ${currentView === VIEWS.ADMIN ? 'active' : ''}`}
+              onClick={() => setCurrentView(VIEWS.ADMIN)}
+              aria-label="관리자 화면으로 이동"
             >
               관리자
             </button>
@@ -440,8 +497,7 @@ function App() {
         </div>
       </header>
 
-      {/* 화면 전환 */}
-      {currentView === 'order' ? <OrderScreen /> : <AdminScreen />}
+      {currentView === VIEWS.ORDER ? <OrderScreen /> : <AdminScreen />}
     </div>
   )
 }
