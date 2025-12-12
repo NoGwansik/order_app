@@ -267,6 +267,235 @@
   cursor: not-allowed;
 }
 
+/* 관리자 화면 스타일 */
+.admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+/* 관리자 대시보드 */
+.dashboard-section {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  color: #555;
+}
+
+.dashboard-stats span:not(:nth-child(even)) {
+  font-weight: 600;
+  color: #2196F3;
+}
+
+/* 재고 현황 */
+.inventory-section {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.inventory-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  flex: 1;
+  min-width: 200px;
+  gap: 1rem;
+}
+
+.inventory-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.inventory-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.inventory-stock {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stock-quantity {
+  font-size: 1rem;
+  color: #555;
+}
+
+.stock-status {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.inventory-controls {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.stock-button {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #2196F3;
+  background-color: transparent;
+  color: #2196F3;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stock-button:hover:not(:disabled) {
+  background-color: #2196F3;
+  color: white;
+}
+
+.stock-button:disabled {
+  border-color: #ccc;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+/* 주문 현황 */
+.orders-section {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.orders-empty {
+  text-align: center;
+  color: #999;
+  padding: 2rem;
+}
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border-left: 4px solid #2196F3;
+}
+
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-date {
+  font-size: 1rem;
+  color: #555;
+}
+
+.order-amount {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2196F3;
+}
+
+.order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.order-item-name {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.order-actions {
+  display: flex;
+  align-items: center;
+}
+
+.order-action-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.order-action-button:hover {
+  background-color: #1976D2;
+}
+
+.order-action-button:active {
+  background-color: #1565C0;
+}
+
+.order-completed {
+  padding: 0.5rem 1.5rem;
+  color: #4caf50;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .header-content {
@@ -285,5 +514,27 @@
   .cart-section {
     position: relative;
     bottom: 0;
+  }
+
+  .order-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .order-actions {
+    width: 100%;
+  }
+
+  .order-action-button {
+    width: 100%;
+  }
+
+  .inventory-item {
+    min-width: 100%;
+  }
+
+  .inventory-list {
+    flex-direction: column;
   }
 }
