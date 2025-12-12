@@ -31,7 +31,7 @@ const initialMenus = [
     name: '아메리카노(ICE)',
     price: 4000,
     description: '시원한 아이스 아메리카노',
-    imageUrl: '',
+    imageUrl: '/images/americano-ice.jpg', // public/images 폴더에 이미지 파일을 넣으세요
     temperature: 'ICE',
     stock: 10
   },
@@ -40,7 +40,7 @@ const initialMenus = [
     name: '아메리카노(HOT)',
     price: 4000,
     description: '따뜻한 핫 아메리카노',
-    imageUrl: '',
+    imageUrl: '/images/americano-hot.jpg', // public/images 폴더에 이미지 파일을 넣으세요
     temperature: 'HOT',
     stock: 10
   },
@@ -49,7 +49,7 @@ const initialMenus = [
     name: '카페라떼',
     price: 5000,
     description: '부드러운 카페라떼',
-    imageUrl: '',
+    imageUrl: '/images/cafe-latte.jpg', // public/images 폴더에 이미지 파일을 넣으세요
     temperature: 'HOT',
     stock: 10
   }
@@ -279,7 +279,20 @@ function App() {
             return (
               <div key={menu.id} className="menu-card">
                 <div className="menu-image">
-                  <div className="image-placeholder">이미지</div>
+                  {menu.imageUrl ? (
+                    <img 
+                      src={menu.imageUrl} 
+                      alt={menu.name}
+                      onError={(e) => {
+                        // 이미지 로드 실패 시 플레이스홀더 표시
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <div className="image-placeholder" style={{ display: menu.imageUrl ? 'none' : 'flex' }}>
+                    {menu.imageUrl ? '' : '이미지'}
+                  </div>
                 </div>
                 <div className="menu-info">
                   <h3 className="menu-name">{menu.name}</h3>
