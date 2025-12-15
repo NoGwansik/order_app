@@ -14,9 +14,10 @@
 - 데이터를 생성/조회/수정/삭제할 수 있는 기능
 
 ## 2. 기술 스택
-- **프런트엔드**: HTML, CSS, 리액트, 자바스크립트
-- **백엔드**: Node.js, Express
+- **프런트엔드**: HTML, CSS, 리액트, 자바스크립트, Vite
+- **백엔드**: Node.js, Express.js
 - **데이터베이스**: PostgreSQL
+- **배포 플랫폼**: Render.com
 
 ## 3. 기본 사항
 - 프런트엔드와 백엔드를 따로 개발
@@ -726,3 +727,95 @@ Menus (1) ──< (N) OrderItems (N) >── (1) Orders
 - 주문 생성 시 필수 필드 검증 (menuId, quantity, price 등)
 - 재고 업데이트 시 재고가 0 이하로 내려가지 않도록 검증
 - 주문 상태 변경 시 유효한 상태 값인지 검증
+
+## 7. 배포 정보
+
+### 7.1 프로젝트 구조
+```
+order-app/
+├── frontend/          # 프런트엔드 (React + Vite)
+│   ├── src/
+│   ├── public/
+│   └── package.json
+├── server/           # 백엔드 (Express.js)
+│   ├── config/
+│   ├── controllers/
+│   ├── routes/
+│   └── server.js
+└── docs/
+    └── PRD.md
+```
+
+### 7.2 배포 플랫폼: Render.com
+
+#### 7.2.1 데이터베이스 배포
+- **서비스 타입**: PostgreSQL
+- **데이터베이스 이름**: `coffee_order_db_z4ci` (예시)
+- **연결 방식**: SSL/TLS 필수
+- **환경 변수**: 
+  - `DATABASE_URL` (권장) 또는 개별 변수
+    - `DB_HOST`
+    - `DB_PORT`
+    - `DB_NAME`
+    - `DB_USER`
+    - `DB_PASSWORD`
+
+#### 7.2.2 백엔드 서버 배포
+- **서비스 타입**: Web Service
+- **Root Directory**: `server`
+- **Build Command**: `npm install`
+- **Start Command**: `npm start`
+- **환경 변수**:
+  - `NODE_ENV=production`
+  - `PORT=10000` (Render 자동 할당)
+  - 데이터베이스 연결 정보 (위 참조)
+  - `FRONTEND_URL` (선택사항, CORS 설정용)
+
+#### 7.2.3 프런트엔드 배포
+- **서비스 타입**: Static Site
+- **Root Directory**: `frontend`
+- **Build Command**: `npm install && npm run build`
+- **Publish Directory**: `dist`
+- **환경 변수**:
+  - `VITE_API_URL`: 백엔드 서비스 URL (예: `https://coffee-order-api.onrender.com`)
+
+### 7.3 배포 순서
+1. **데이터베이스 배포**: Render에서 PostgreSQL 데이터베이스 생성
+2. **데이터베이스 스키마 생성**: Render Shell에서 `npm run create-tables` 실행
+3. **백엔드 서버 배포**: Web Service로 배포
+4. **프런트엔드 배포**: Static Site로 배포
+
+### 7.4 환경 변수 설정 가이드
+
+#### 백엔드 환경 변수 (.env 또는 Render 환경 변수)
+```env
+NODE_ENV=production
+PORT=10000
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+# 또는 개별 변수
+DB_HOST=your-db-host.render.com
+DB_PORT=5432
+DB_NAME=coffee_order_db_z4ci
+DB_USER=your-db-user
+DB_PASSWORD=your-db-password
+FRONTEND_URL=https://your-frontend-url.onrender.com
+```
+
+#### 프런트엔드 환경 변수 (Render 환경 변수)
+```env
+VITE_API_URL=https://your-backend-url.onrender.com
+```
+
+### 7.5 배포 후 확인 사항
+- [ ] 데이터베이스 연결 성공
+- [ ] 백엔드 API 엔드포인트 정상 동작 (`/api/menus`, `/api/orders` 등)
+- [ ] 프런트엔드에서 백엔드 API 호출 성공
+- [ ] CORS 설정 정상 작동
+- [ ] 주문 생성 및 조회 기능 정상 작동
+- [ ] 관리자 화면에서 재고 관리 및 주문 상태 변경 정상 작동
+
+### 7.6 주의사항
+- Render 무료 플랜은 15분 비활성 시 슬리프 모드로 전환됩니다
+- 첫 요청 시 지연될 수 있습니다 (Cold Start)
+- 데이터베이스 무료 플랜은 90일 후 삭제될 수 있으므로 백업 권장
+- 환경 변수는 Render 대시보드에서 설정해야 합니다 (`.env` 파일은 배포에 사용되지 않음)
