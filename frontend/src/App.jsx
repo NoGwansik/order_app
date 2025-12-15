@@ -81,6 +81,9 @@ const formatOrderDate = (date) => {
   return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
 }
 
+// API URL 설정 (환경 변수 또는 기본값)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
 function App() {
   const [currentView, setCurrentView] = useState(VIEWS.ORDER)
   const [menus, setMenus] = useState(initialMenus)

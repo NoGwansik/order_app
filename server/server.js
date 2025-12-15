@@ -10,7 +10,12 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // 미들웨어
-app.use(cors()) // CORS 설정 (프런트엔드와 통신을 위해)
+// CORS 설정 (프런트엔드와 통신을 위해)
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || '*', // 프로덕션에서는 프런트엔드 URL 지정 권장
+  credentials: true
+}
+app.use(cors(corsOptions))
 app.use(express.json()) // JSON 요청 본문 파싱
 app.use(express.urlencoded({ extended: true })) // URL 인코딩된 요청 본문 파싱
 
