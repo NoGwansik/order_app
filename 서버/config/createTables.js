@@ -1,4 +1,4 @@
-import pool from './database.js'
+import pool, { testConnection } from './database.js'
 
 // 테이블 생성 스크립트
 const createTables = async () => {
@@ -146,12 +146,22 @@ const insertInitialData = async () => {
 // 메인 실행 함수
 const main = async () => {
   try {
+    // 먼저 연결 테스트
+    console.log('데이터베이스 연결을 테스트합니다...')
+    const connected = await testConnection()
+    if (!connected) {
+      console.error('데이터베이스 연결에 실패했습니다.')
+      process.exit(1)
+    }
+    
     await createTables()
     await insertInitialData()
     console.log('\n✅ 모든 작업이 완료되었습니다!')
+    await pool.end() // 연결 풀 종료
     process.exit(0)
   } catch (error) {
     console.error('❌ 오류 발생:', error)
+    await pool.end().catch(() => {}) // 에러 발생 시에도 연결 풀 종료 시도
     process.exit(1)
   }
 }
